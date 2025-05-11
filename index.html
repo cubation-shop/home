@@ -101,7 +101,7 @@
 </head>
 <body>
   <header>
-    <img src="https://github.com/ARTEMIY-FCC/cubation/blob/main/5249341044313682152.jpg?raw=true" alt="Cubation Logo">
+    <img src="https://github.com/ARTEMIY-FCC/cubation/raw/main/5249341044313682152.jpg" alt="Cubation Logo">
     <div class="search-box">
       <input type="text" id="search" placeholder="Поиск..." oninput="renderCatalog()">
     </div>
@@ -683,36 +683,34 @@
     "price": 700,
     "image": "https://github.com/ARTEMIY-FCC/cubation/blob/main/5246934037266821763.jpg?raw=true"
   }
-];
+    ];
 
+    let cart = [];
+    if (localStorage.getItem('cart')) {
+      cart = JSON.parse(localStorage.getItem('cart'));
+    }
 
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    updateCartCount();
+    function saveCart() {
+      localStorage.setItem('cart', JSON.stringify(cart));
+      updateCartCount();
+    }
 
     function addToCart(product) {
       cart.push(product);
-      localStorage.setItem('cart', JSON.stringify(cart));
-      updateCartCount();
+      saveCart();
       alert(`Товар "${product.title}" добавлен в корзину!`);
-    }
-
-    function updateCartCount() {
-      const cartCount = document.getElementById('cart-count');
-      cartCount.textContent = cart.length;
     }
 
     function openCart() {
       if (cart.length === 0) {
-        alert('Ваша корзина пуста!');
+        alert('Корзина пуста!');
         return;
       }
 
-      const cartDetails = cart.map(item => `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #ddd; padding-bottom: 1rem;">
-          <div>
-            <h4 style="margin-bottom: 0.5rem;">${item.title}</h4>
-            <p style="color: #ff5722; font-weight: bold;">${item.price}₽</p>
-          </div>
+      const cartContent = cart.map(item => `
+        <div style="display: flex; justify-content: space-between; align-items: center;margin-bottom: 1rem;">
+          <div>${item.title} - ${item.price}₽</div>
+          <button onclick="removeFromCart('${item.title}')" style="background: #f44336; color: white; border: none; padding: 0.5rem; border-radius: 5px; cursor: pointer;">Удалить</button>
         </div>
       `).join('');
 
@@ -741,154 +739,114 @@
 
       box.innerHTML = `
         <h2 style="margin-bottom: 1rem;">Ваша корзина</h2>
-        ${cartDetails}
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
-          <h3 style="font-size: 1.5rem; font-weight: bold;">Итого: ${total}₽</h3>
-          <button onclick="checkout()" class="cart-btn">Оформить заказ</button>
+        ${cartContent}
+        <p style="font-size: 1.2rem; font-weight: bold; margin-top: 1rem;">Итого: ${total}₽</p>
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+          <button class="cart-btn" onclick="checkout()">Оформить заказ</button>
+          <button class="cart-btn" style="background: #ccc; color: #000;" onclick="closeModal()">Продолжить покупки</button>
         </div>
-        <button style="margin-top: 1rem; background: #ccc; color: #000; padding: 0.5rem 1rem; border-radius: 10px; border: none; font-weight: bold; cursor: pointer;" onclick="document.body.removeChild(this.closest('div').parentElement)">Закрыть</button>
       `;
 
       modal.appendChild(box);
       document.body.appendChild(modal);
+    }
+
+    function removeFromCart(title) {
+      cart = cart.filter(item => item.title !== title);
+      saveCart();
+      openCart();
+    }
+
+    function closeModal() {
+      document.body.removeChild(document.querySelector('div[style*="position: fixed;"]'));
     }
 
     function checkout() {
-    if (cart.length === 0) {
+      if (cart.length === 0) {
         alert('Корзина пуста!');
         return;
+      }
+      const orderDetails = cart.map(item => `${item.title} - ${item.price}₽`).join('\n');
+      const message = `Я хочу заказать:\n${orderDetails}\nИтого: ${cart.reduce((sum, item) => sum + item.price, 0)}₽`;
+
+        const modal = document.createElement('div');
+        modal.style = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        `;
+
+        const box = document.createElement('div');
+        box.style = `
+          background: white; padding: 2rem; border-radius: 12px;
+          max-width: 500px; width: 90%; font-family: Rubik, sans-serif;
+          text-align: left; position: relative;
+        `;
+
+        box.innerHTML = `
+          <h3 style="margin-bottom: 1rem;">Инструкция по заказу</h3>
+          <p style="white-space: pre-line;">Напиши продавцу <a href="https://t.me/Burguss" target="_blank">@Burguss</a>, и отправь сообщение:</p>
+          <textarea readonly style="width: 100%; margin-top: 1rem; height: 80px; padding: 0.5rem; font-size: 1rem;">${message}</textarea>
+          <button id="copy-btn" class="cart-btn" style="margin-top: 1rem;">Скопировать сообщение</button>
+          <button class="cart-btn" style="margin-top: 1rem; background: #ccc; color: #000;" onclick="closeModalAndRefreshCart()">Закрыть</button>
+        `;
+
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+
+        document.getElementById('copy-btn').onclick = () => {
+          navigator.clipboard.writeText(message).then(() => {
+            document.getElementById('copy-btn').textContent = 'Скопировано!';
+            setTimeout(() => {
+              document.getElementById('copy-btn').textContent = 'Скопировать сообщение';
+            }, 2000);
+          }).catch(err => {
+            console.error('Failed to copy: ', err);
+          });
+        };
+      }
+
+      function closeModalAndRefreshCart() {
+        document.body.removeChild(document.querySelector('div[style*="position: fixed;"]'));
+        cart = [];
+        saveCart();
+        openCart();
+      }
+
+    function updateCartCount() {
+      const cartCount = document.getElementById('cart-count');
+      cartCount.textContent = cart.length;
+      cartCount.style.display = cart.length > 0 ? 'block' : 'none';
     }
-    const orderDetails = cart.map(item => `${item.title} - ${item.price}₽`).join('\n');
-    const message = `Я хочу заказать:\n${orderDetails}\nИтого: ${cart.reduce((sum, item) => sum + item.price, 0)}₽`;
-
-      const modal = document.createElement('div');
-      modal.style = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-      `;
-
-      const box = document.createElement('div');
-      box.style = `
-        background: white; padding: 2rem; border-radius: 12px;
-        max-width: 500px; width: 90%; font-family: Rubik, sans-serif;
-        text-align: left; position: relative;
-      `;
-
-      box.innerHTML = `
-        <h3 style="margin-bottom: 1rem;">Инструкция по заказу</h3>
-        <p style="white-space: pre-line;">Напиши продавцу <a href="https://t.me/Burguss" target="_blank">@Burguss</a>, и отправь сообщение:</p>
-        <textarea readonly style="width: 100%; margin-top: 1rem; height: 80px; padding: 0.5rem; font-size: 1rem;">${message}</textarea>
-        <button id="copy-btn" class="cart-btn" style="margin-top: 1rem;">Скопировать сообщение</button>
-        <button class="cart-btn" style="margin-top: 1rem; background: #ccc; color: #000;" onclick="document.body.removeChild(this.closest('div').parentElement)">Закрыть</button>
-      `;
-
-      modal.appendChild(box);
-      document.body.appendChild(modal);
-
-      document.getElementById('copy-btn').onclick = () => {
-        navigator.clipboard.writeText(message).then(() => {
-          document.getElementById('copy-btn').textContent = 'Скопировано!';
-          setTimeout(() => {
-            document.getElementById('copy-btn').textContent = 'Скопировать сообщение';
-          }, 2000);
-        }).catch(err => {
-          console.error('Failed to copy: ', err);
-        });
-      };
-    }
-
-
 
     function renderCatalog() {
+      const searchInput = document.getElementById('search').value.toLowerCase();
+      const filteredProducts = products.filter(product =>
+        product.title.toLowerCase().includes(searchInput)
+      );
+
       const catalog = document.getElementById('catalog');
-      const query = document.getElementById('search').value.toLowerCase();
-      catalog.innerHTML = '';
-
-      const filtered = products.filter(p => p.title.toLowerCase().includes(query));
-
-      filtered.forEach(p => {
-        const card = document.createElement('div');
-        card.className = 'product';
-        card.innerHTML = `
-          <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="${p.image}" alt="${p.title}" class="lazy-load" />
+      catalog.innerHTML = filteredProducts.map(product => `
+        <div class="product" onclick="addToCart(${JSON.stringify(product)})">
+          <img src="${product.image}" alt="${product.title}">
           <div class="product-info">
-            <div class="product-title">${p.title}</div>
-            <div class="product-price">${p.price}₽</div>
-          </div>
-        `;
-        card.onclick = () => showProductDetail(p);
-        catalog.appendChild(card);
-      });
-      lazyLoadImages();
-    }
-
-    function showProductDetail(product) {
-      const detail = document.getElementById('product-detail');
-      const catalog = document.getElementById('catalog');
-      catalog.style.display = 'none';
-      detail.style.display = 'block';
-      detail.innerHTML = `
-        <div style="background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; margin: auto; position: relative;">
-          <button onclick="backToCatalog()" class="cart-btn" style="position: absolute; top: 1rem; left: 1rem; background: #ccc; color: #000; padding: 0.5rem 1rem; border-radius: 10px; border: none; font-weight: bold;">← Назад</button>
-          <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="${product.image}" alt="${product.title}" style="width: 100%; height: auto; border-radius: 10px; margin: 2rem 0 1rem;" class="lazy-load">
-          <h2 style="margin-bottom: 0.5rem;">${product.title}</h2>
-          <p style="font-size: 1.2rem; color: #ff5722; font-weight: bold;">${product.price}₽</p>
-          <button onclick='addToCart(${JSON.stringify(product)})' class="cart-btn" style="margin-top: 1rem;">Добавить в корзину</button>
-          <h3 style="margin: 2rem 0 1rem;">Рекомендуемые товары</h3>
-          <div style="display: flex; overflow-x: auto; gap: 1rem; padding-bottom: 1rem; scrollbar-width: thin;">
-            ${products.filter(p => p.title !== product.title).slice(0, 4).map(r => `
-              <div class="product" style="min-width: 160px; flex: 0 0 auto;" onclick='showProductDetail(${JSON.stringify(r)})'>
-                <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="${r.image}" alt="${r.title}" class="lazy-load" />
-                <div class="product-info">
-                  <div class="product-title">${r.title}</div>
-                  <div class="product-price">${r.price}₽</div>
-                </div>
-              </div>
-            `).join('')}
+            <div class="product-title">${product.title}</div>
+            <div class="product-price">${product.price}₽</div>
           </div>
         </div>
-      `;
-      lazyLoadImages();
-    }
-
-    function backToCatalog() {
-      document.getElementById('product-detail').style.display = 'none';
-      document.getElementById('catalog').style.display = 'grid';
-    }
-
-    function lazyLoadImages() {
-      const lazyImages = document.querySelectorAll('.lazy-load');
-
-      const loadImage = (image) => {
-        image.src = image.dataset.src;
-        image.classList.remove('lazy-load');
-      };
-
-      const observer = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            loadImage(entry.target);
-            observer.unobserve(entry.target);
-        }
-        });
-      });
-
-      lazyImages.forEach(img => {
-        observer.observe(img);
-      });
+      `).join('');
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       renderCatalog();
-      lazyLoadImages();
+      updateCartCount();
     });
   </script>
 </body>
